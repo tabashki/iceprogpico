@@ -1,0 +1,19 @@
+name: build
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y gcc-arm-none-eabi cmake
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build
+      - run: cmake --build build/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iceprogpico
+          if-no-files-found: error
+          compression-level: 9
+          path: |
+            LICENSE.md
+            build/iceprogpico.uf2
