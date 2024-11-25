@@ -22,7 +22,7 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(iceprogpico iceprogpico.c )
+add_executable(iceprogpico iceprogpico.c spi_flash.c log.c)
 
 pico_set_program_name(iceprogpico "iceprogpico")
 pico_set_program_version(iceprogpico "0.1")
