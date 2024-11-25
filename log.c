@@ -9,7 +9,7 @@
 //===============================
 
 #define LOG_MAX_MESSAGE_LEN 58  // Excluding NUL terminator
-#define LOG_QUEUE_DEPTH 64
+#define LOG_QUEUE_DEPTH 128
 
 #define ADVANCE_QUEUE_PTR(p) do { (p) = ((p) + 1) % LOG_QUEUE_DEPTH; } while(0)
 

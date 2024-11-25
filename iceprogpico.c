@@ -124,6 +124,7 @@ int decode_frame(const uint8_t* rx_data, size_t rx_size, uint8_t* dest,
         if (b == FRAME_ESC) {
             // Try to read ahead to decode escape sequence
             if (rx_i >= rx_size) {
+                LOG_ERROR("ESC sequence underflow, buf len: %lu", rx_size);
                 return FRAME_ERROR_ESCAPE_SEQUENCE;
             }
             b = rx_data[rx_i++];
@@ -132,16 +133,21 @@ int decode_frame(const uint8_t* rx_data, size_t rx_size, uint8_t* dest,
             } else if (b == FRAME_ESCAPED_ESC) {
                 b = (uint8_t)FRAME_ESC;
             } else {
+                LOG_ERROR("Unrecognized ESC pair: 0x%02X 0x%02X",
+                          FRAME_ESC, b);
                 return FRAME_ERROR_ESCAPE_SEQUENCE;
             }
         }
         if (dst_i >= dest_size) {
+            LOG_ERROR("Decode overflow, rx_size: %lu, dest_size: %lu",
+                      rx_size, dest_size);
             return FRAME_ERROR_BUFFER_2BIG;
         }
         dest[dst_i++] = b;
         frame_checksum += b;
     }
     if (frame_checksum != 0xFF) {
+        LOG_ERROR("Expected 0xFF checksum, was: 0x%02X", frame_checksum);
         return FRAME_ERROR_CHECKSUM;
     }
     return (int)dst_i;
@@ -152,10 +158,11 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
     // At minimum destination must be large enough to contain payload +3 bytes
     // for header and terminating FRAME_END. Actual encoded frame size may be
     // larger from escape sequence encoding
-    if (dest_size < (payload_size + 3)) {
+    if (dest_size < (MIN_FRAME_SIZE + 1)) {
         return FRAME_ERROR_BUFFER_2SMALL;
     }
     if (payload_size > MAX_FRAME_PAYLOAD_SIZE) {
+        LOG_ERROR("Payload length above limit: %lu", payload_size);
         return FRAME_ERROR_BUFFER_2BIG;
     }
     uint8_t frame_checksum = frame_cmd;
@@ -171,6 +178,7 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
         bool needs_escape = (p == FRAME_END || p == FRAME_ESC);
         if (needs_escape) {
             if ((n+1) >= dest_size) {
+                LOG_ERROR("ESC sequence overflow, dest_size: %lu", dest_size);
                 return FRAME_ERROR_BUFFER_2BIG;
             }
             uint8_t escaped = 0;
@@ -183,6 +191,7 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
                 escaped = FRAME_ESCAPED_ESC;
                 break;
             default:
+                LOG_ERROR("Tried to ESC non-escapable char: 0x%02X", p);
                 return FRAME_ERROR_ESCAPE_SEQUENCE;
             }
             dest[n++] = FRAME_ESC;
@@ -192,6 +201,7 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
         }
     }
     if ((n + 2) >= dest_size) {
+        LOG_ERROR("Dest too small to write FRAME_END, size: %lu", dest_size);
         return FRAME_ERROR_BUFFER_2SMALL;
     }
     dest[n++] = (0xFF - frame_checksum);
