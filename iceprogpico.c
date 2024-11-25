@@ -66,7 +66,7 @@ enum frame_error_codes {
     FRAME_ERROR_BUFFER_2SMALL = -1003,
 };
 
-#define MIN_FRAME_SIZE 3
+#define MIN_FRAME_SIZE 2    // Excluding terminator
 #define MAX_FRAME_SIZE 512
 #define MAX_FRAME_PAYLOAD_SIZE (MAX_FRAME_SIZE - 3) // -3 bytes for framing
 
@@ -207,8 +207,7 @@ int recieve_and_decode_frame(uint8_t* dest_data, size_t dest_size) {
         LOG_ERROR("Failed to recieve frame, result: %d", result);
         return result;
     }
-    // MIN_FRAME_SIZE - 1, since `stdio_read_bytes_until` skips the terminator
-    if (result < (MIN_FRAME_SIZE - 1)) {
+    if (result < MIN_FRAME_SIZE) {
         LOG_ERROR("Recieved frame too small: %d", result);
         return FRAME_ERROR_BUFFER_2SMALL;
     }
