@@ -207,7 +207,8 @@ int recieve_and_decode_frame(uint8_t* dest_data, size_t dest_size) {
         LOG_ERROR("Failed to recieve frame, result: %d", result);
         return result;
     }
-    if (result < MIN_FRAME_SIZE) {
+    // MIN_FRAME_SIZE - 1, since `stdio_read_bytes_until` skips the terminator
+    if (result < (MIN_FRAME_SIZE - 1)) {
         LOG_ERROR("Recieved frame too small: %d", result);
         return FRAME_ERROR_BUFFER_2SMALL;
     }
