@@ -60,10 +60,10 @@ enum iceprog_frame_consts {
 //------------------------
 enum frame_error_codes {
     FRAME_OK = PICO_OK,
-    FRAME_CHECKSUM_ERROR = -1000,
-    FRAME_ESCAPE_ERROR = -1001,
-    FRAME_SIZETOOSMALL_ERROR = -1002,
-    FRAME_SIZETOOBIG_ERROR = -1002,
+    FRAME_ERROR_CHECKSUM = -1000,
+    FRAME_ERROR_ESCAPE_SEQUENCE = -1001,
+    FRAME_ERROR_BUFFER_2BIG = -1002,
+    FRAME_ERROR_BUFFER_2SMALL = -1003,
 };
 
 #define MIN_FRAME_SIZE 3
@@ -110,7 +110,7 @@ int decode_frame(const uint8_t* rx_data, size_t rx_size, uint8_t* dest,
     size_t dst_i = 0;
 
     if (rx_size < MIN_FRAME_SIZE) {
-        return FRAME_SIZETOOSMALL_ERROR;
+        return FRAME_ERROR_BUFFER_2SMALL;
     }
     if (rx_data[0] == FRAME_END) {
         rx_i++;
@@ -124,7 +124,7 @@ int decode_frame(const uint8_t* rx_data, size_t rx_size, uint8_t* dest,
         if (b == FRAME_ESC) {
             // Try to read ahead to decode escape sequence
             if (rx_i >= rx_size) {
-                return FRAME_ESCAPE_ERROR;
+                return FRAME_ERROR_ESCAPE_SEQUENCE;
             }
             b = rx_data[rx_i++];
             if (b == FRAME_ESCAPED_END) {
@@ -132,17 +132,17 @@ int decode_frame(const uint8_t* rx_data, size_t rx_size, uint8_t* dest,
             } else if (b == FRAME_ESCAPED_ESC) {
                 b = (uint8_t)FRAME_ESC;
             } else {
-                return FRAME_ESCAPE_ERROR;
+                return FRAME_ERROR_ESCAPE_SEQUENCE;
             }
         }
         if (dst_i >= dest_size) {
-            return FRAME_SIZETOOBIG_ERROR;
+            return FRAME_ERROR_BUFFER_2BIG;
         }
         dest[dst_i++] = b;
         frame_checksum += b;
     }
     if (frame_checksum != 0xFF) {
-        return FRAME_CHECKSUM_ERROR;
+        return FRAME_ERROR_CHECKSUM;
     }
     return (int)dst_i;
 }
@@ -153,10 +153,10 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
     // for header and terminating FRAME_END. Actual encoded frame size may be
     // larger from escape sequence encoding
     if (dest_size < (payload_size + 3)) {
-        return FRAME_SIZETOOSMALL_ERROR;
+        return FRAME_ERROR_BUFFER_2SMALL;
     }
     if (payload_size > MAX_FRAME_PAYLOAD_SIZE) {
-        return FRAME_SIZETOOBIG_ERROR;
+        return FRAME_ERROR_BUFFER_2BIG;
     }
     uint8_t frame_checksum = frame_cmd;
     size_t n = 0;
@@ -171,7 +171,7 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
         bool needs_escape = (p == FRAME_END || p == FRAME_ESC);
         if (needs_escape) {
             if ((n+1) >= dest_size) {
-                return FRAME_SIZETOOBIG_ERROR;
+                return FRAME_ERROR_BUFFER_2BIG;
             }
             uint8_t escaped = 0;
             switch (p)
@@ -183,7 +183,7 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
                 escaped = FRAME_ESCAPED_ESC;
                 break;
             default:
-                return FRAME_ESCAPE_ERROR;
+                return FRAME_ERROR_ESCAPE_SEQUENCE;
             }
             dest[n++] = FRAME_ESC;
             dest[n++] = escaped;
@@ -192,7 +192,7 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
         }
     }
     if ((n + 2) >= dest_size) {
-        return FRAME_SIZETOOSMALL_ERROR;
+        return FRAME_ERROR_BUFFER_2SMALL;
     }
     dest[n++] = (0xFF - frame_checksum);
     dest[n++] = FRAME_END;
@@ -209,7 +209,7 @@ int recieve_and_decode_frame(uint8_t* dest_data, size_t dest_size) {
     }
     if (result < MIN_FRAME_SIZE) {
         LOG_ERROR("Recieved frame too small: %d", result);
-        return FRAME_SIZETOOSMALL_ERROR;
+        return FRAME_ERROR_BUFFER_2SMALL;
     }
     LOG_INFO("Recieved raw frame, len: %d", result);
 
