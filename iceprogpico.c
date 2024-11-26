@@ -214,7 +214,8 @@ int recieve_and_decode_frame(uint8_t* dest_data, size_t dest_size) {
     uint8_t rx_data[MAX_FRAME_SIZE];
     int result = stdio_read_bytes_until(FRAME_END, rx_data, sizeof(rx_data));
     if (result < FRAME_OK) {
-        LOG_ERROR("Failed to recieve frame, result: %d", result);
+        LOG_COND_ERROR(result != PICO_ERROR_TIMEOUT,
+                       "Failed to recieve frame, result: %d", result);
         return result;
     }
     if (result < MIN_FRAME_SIZE) {
@@ -305,7 +306,8 @@ void prog_loop() {
     uint8_t frame_data[MAX_FRAME_SIZE];
     int result = recieve_and_decode_frame(frame_data, sizeof(frame_data));
     if (result < FRAME_OK) {
-        LOG_ERROR("Failed to recieve/decode frame: %d", result);
+        LOG_COND_ERROR(result != PICO_ERROR_TIMEOUT,
+                       "Failed to recieve/decode frame: %d", result);
         return;
     }
     LOG_INFO("Recieved frame, len: %d, data[0]: 0x%02X", result, frame_data[0]);
