@@ -243,13 +243,17 @@ int encode_and_send_frame(uint8_t frame_cmd, const uint8_t* payload,
 // Command Handlers
 //==================
 
-void handle_cmd_read_id() {
+int handle_cmd_read_id() {
     spi_flash_power_up();
     uint8_t jedec_id[3];
     int result = spi_flash_read_jedec_id(jedec_id, sizeof(jedec_id));
-    if (result < 0 || (size_t)result != sizeof(jedec_id)) {
+    if (result < PICO_OK) {
+        LOG_ERROR("Failed to read JEDEC ID: %d", result);
+        return result;
+    }
+    if ((size_t)result != sizeof(jedec_id)) {
         LOG_ERROR("Unexpected JEDEC ID size: %d", result);
-        return; // ID read failed for some reason
+        return FRAME_ERROR_BUFFER_2SMALL;
     }
     spi_flash_power_down();
 
@@ -257,12 +261,12 @@ void handle_cmd_read_id() {
              jedec_id[0], jedec_id[1], jedec_id[2]);
 
     result = encode_and_send_frame(FRAME_CMD_READ_ID, jedec_id, sizeof(jedec_id));
-    if (result < PICO_OK) {
-        LOG_ERROR("Failed to encode/send READ_ID frame: %d", result);
-    }
+    LOG_COND_ERROR(result < FRAME_OK,
+                    "Failed to encode/send READ_ID frame: %d", result);
+    return result;
 }
 
-void handle_cmd_read_page(const uint16_t page_addr) {
+int handle_cmd_read_page(const uint16_t page_addr) {
     uint8_t response[SPI_FLASH_PAGE_SIZE + 2];
     response[0] = (uint8_t)(page_addr >> 8);
     response[1] = (uint8_t)page_addr;
@@ -274,7 +278,7 @@ void handle_cmd_read_page(const uint16_t page_addr) {
     if (result < PICO_OK) {
         LOG_ERROR("Failed to read flash page 0x%X, result: %d",
                   page_addr, result);
-        return;
+        return result;
     }
     bool page_is_zeroed = true;
     for (uint16_t i = 0; i < SPI_FLASH_PAGE_SIZE; i++) {
@@ -284,18 +288,35 @@ void handle_cmd_read_page(const uint16_t page_addr) {
         }
     }
     if (page_is_zeroed) {
-        result = encode_and_send_frame(FRAME_CMD_EMPTY, response, 2);
-        if (result < FRAME_OK) {
-            LOG_ERROR("Failed to send EMPTY response: %d", result);
-            return;
-        }
+        result = encode_and_send_frame(FRAME_CMD_EMPTY,
+                                       response, 2);
+        LOG_COND_ERROR(result < FRAME_OK,
+                       "Failed to send EMPTY response: %d", result);
     } else {
-        result = encode_and_send_frame(FRAME_CMD_READ_PAGE, response, sizeof(response));
+        result = encode_and_send_frame(FRAME_CMD_READ_PAGE,
+                                       response, sizeof(response));
+        LOG_COND_ERROR(result < FRAME_OK,
+                       "Failed to send READ_PAGE response: %d", result);
+    }
+    return (result < FRAME_OK) ? result : FRAME_OK;
+}
+
+int handle_cmd_read_all() {
+    // The original iceprogduino firmware AND the PC-side command line tool
+    // both have this hardcoded max page count, so we must respec it.
+    const uint32_t max_pages = 0x2000;
+
+    uint32_t pages = spi_flash_read_size() / SPI_FLASH_PAGE_SIZE;
+    pages = MIN(pages, max_pages);
+
+    int result = FRAME_OK;
+    for (uint32_t page_addr = 0; page_addr < pages; page_addr++) {
+        result = handle_cmd_read_page(page_addr);
         if (result < FRAME_OK) {
-            LOG_ERROR("Failed to send READ_PAGE response: %d", result);
-            return;
+            return result;
         }
     }
+    return FRAME_OK;
 }
 
 void prog_loop() {
@@ -320,26 +341,41 @@ void prog_loop() {
     const size_t payload_size = (size_t)result - 1;
 
     switch(frame_cmd) {
+#if WITH_LOGGING
     case FRAME_CMD_PRIVATE_DUMP_LOG:
         log_sink_to_stdio();
+        result = FRAME_OK;
         break;
+#endif // WITH_LOGGING
+
     case FRAME_CMD_READ_ID:
-        handle_cmd_read_id();
+        result = handle_cmd_read_id();
         break;
+
     case FRAME_CMD_READ_PAGE: {
             if (payload_size < 2) {
                 LOG_ERROR("READ_PAGE payload too small: %d", result);
+                result = FRAME_ERROR_BUFFER_2SMALL;
                 break;
             }
             const uint16_t page_addr = ((uint16_t)payload[0]) << 16 | payload[1];
-            handle_cmd_read_page(page_addr);
+            result = handle_cmd_read_page(page_addr);
         }
         break;
+
+    case FRAME_CMD_READ_ALL:
+        result = handle_cmd_read_all();
+        break;
     // TODO: Implement all other commands
+
     default:
-        LOG_ERROR("Unrecognized command: 0x%02X", frame_cmd);
+        LOG_WARN("Dropping unknown command: 0x%02X", frame_cmd);
     }
 
+    if (result < FRAME_OK) {
+        LOG_ERROR("Command handler for: 0x%02X, returned error: %d",
+                  frame_cmd, result);
+    }
     // Release the iCE40 from reset
     gpio_put(PIN_RESET, 1);
 }
