@@ -7,7 +7,9 @@
 // Logging support for debugging
 //===============================
 
+#ifndef WITH_LOGGING
 #define WITH_LOGGING 1
+#endif
 
 typedef enum {
     LOG_SEVERITY_INFO,

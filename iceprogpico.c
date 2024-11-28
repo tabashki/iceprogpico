@@ -416,17 +416,21 @@ void setup_io() {
     LOG_INFO("Initialized I/Os");
 }
 
+#define _STRINGIFY(x) #x
+#define BI_DECL_BUILD_MACRO_STATE(m) \
+    bi_decl(bi_program_build_attribute(#m "=" _STRINGIFY(m)))
+
 int main() {
     // Metadata for picotool
     bi_decl(bi_program_description("Iceprogduino port for the Raspberry Pi Pico"));
     bi_decl(bi_program_url("https://github.com/tabashki/iceprogpico"));
+    BI_DECL_BUILD_MACRO_STATE(WITH_LOGGING);
+
     bi_decl(bi_1pin_with_name(PIN_RESET, "RESET"));
     bi_decl(bi_1pin_with_name(PIN_CDONE, "CDONE"));
     bi_decl(bi_1pin_with_name(PIN_LED, "LED"));
-    bi_decl(bi_1pin_with_name(PIN_SCK, "SCK"));
-    bi_decl(bi_1pin_with_name(PIN_MOSI, "MOSI"));
-    bi_decl(bi_1pin_with_name(PIN_MISO, "MISO"));
-    bi_decl(bi_1pin_with_name(PIN_CS, "CS#"));
+    bi_decl(bi_3pins_with_func(PIN_SCK, PIN_MOSI, PIN_MISO, GPIO_FUNC_SPI));
+    bi_decl(bi_1pin_with_name(PIN_CS, "SPI CS#"));
 
     LOG_INFO("Booting up...");
     setup_io();
