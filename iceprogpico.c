@@ -333,6 +333,8 @@ void prog_loop() {
     }
     LOG_INFO("Recieved frame, len: %d, data[0]: 0x%02X", result, frame_data[0]);
 
+    // Turn on status LED during frame handlig
+    gpio_put(PIN_LED, 1);
     // Hold the iCE40 in reset while processing programmer request
     gpio_put(PIN_RESET, 0);
 
@@ -378,6 +380,8 @@ void prog_loop() {
     }
     // Release the iCE40 from reset
     gpio_put(PIN_RESET, 1);
+    // Turn off status LED when finished
+    gpio_put(PIN_LED, 0);
 }
 
 
@@ -386,32 +390,34 @@ void prog_loop() {
 
 void setup_io() {
     stdio_init_all();
+    stdio_set_translate_crlf(&stdio_usb, false);
 
-    // SPI initialisation, clock at 1MHz.
+    // SPI initialisation, clock at 1MHz
+    //-----------------------------------
     spi_init(SPI_PORT, 1000*1000);
     gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
     gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
     gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
-    gpio_set_function(PIN_CS,   GPIO_FUNC_SIO);
 
     // Chip select is active-low, so we'll initialise it to a driven-high state
+    gpio_init(PIN_CS);
     gpio_set_dir(PIN_CS, GPIO_OUT);
     gpio_put(PIN_CS, 1);
 
     // Initialize all other GPIOs
-    gpio_init(PIN_LED);
-    gpio_set_dir(PIN_LED, GPIO_OUT);
-    gpio_put(PIN_LED, 1);
-
+    //----------------------------
     gpio_init(PIN_CDONE);
+    gpio_init(PIN_RESET);
+    gpio_init(PIN_LED);
+
     gpio_set_dir(PIN_CDONE, GPIO_IN);
+    gpio_set_dir(PIN_RESET, GPIO_OUT);
+    gpio_set_dir(PIN_LED,   GPIO_OUT);
 
     // iCE40 Reset is active-low, drive it high inititally
-    gpio_init(PIN_RESET);
-    gpio_set_dir(PIN_RESET, GPIO_OUT);
     gpio_put(PIN_RESET, 1);
-
-    stdio_set_translate_crlf(&stdio_usb, false);
+    // Set status LED to off initially
+    gpio_put(PIN_LED, 0);
 
     LOG_INFO("Initialized I/Os");
 }
