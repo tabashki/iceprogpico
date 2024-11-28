@@ -35,9 +35,9 @@
 enum iceprog_frame_consts {
     // Iceprogduino serial programming commands
     FRAME_CMD_READ_ID = 0x9F,
-    FRAME_CMD_POWER_UP = 0xAB,
-    FRAME_CMD_POWER_DOWN = 0xB9,
-    FRAME_CMD_WRITE_ENABLE = 0x06,
+    FRAME_CMD_POWER_UP = 0xAB,      // Seemingly unused
+    FRAME_CMD_POWER_DOWN = 0xB9,    // Seemingly unused
+    FRAME_CMD_WRITE_ENABLE = 0x06,  // Seemingly unused
     FRAME_CMD_BULK_ERASE = 0xC7,
     FRAME_CMD_SECURE_ERASE = 0xD8,
     FRAME_CMD_PROGRAM_PAGE = 0x02,
@@ -60,6 +60,7 @@ enum iceprog_frame_consts {
 //------------------------
 enum frame_error_codes {
     FRAME_OK = PICO_OK,
+    FRAME_ERROR_UNIMPLEMENTED = -999,
     FRAME_ERROR_CHECKSUM = -1000,
     FRAME_ERROR_ESCAPE_SEQUENCE = -1001,
     FRAME_ERROR_BUFFER_2BIG = -1002,
@@ -319,6 +320,28 @@ int handle_cmd_read_all() {
     return FRAME_OK;
 }
 
+int handle_cmd_bulk_erase() {
+    // TODO: Implement this
+    return FRAME_ERROR_UNIMPLEMENTED;
+}
+
+int handle_cmd_secure_erase() {
+    // TODO: Implement this
+    return FRAME_ERROR_UNIMPLEMENTED;
+}
+
+int handle_cmd_program_page(const uint8_t* payload, size_t payload_size) {
+    if (payload_size < (2 + SPI_FLASH_PAGE_SIZE)) {
+        LOG_ERROR("PROGRAM_PAGE payload too small: %llu", payload_size);
+        return FRAME_ERROR_BUFFER_2SMALL;
+    }
+
+    const uint16_t page_addr = ((uint16_t)payload[0]) << 16 | payload[1];
+
+    // TODO: Implement this
+    return FRAME_ERROR_UNIMPLEMENTED;
+}
+
 void prog_loop() {
     if (!stdio_usb_connected()) {
         return;
@@ -368,7 +391,21 @@ void prog_loop() {
     case FRAME_CMD_READ_ALL:
         result = handle_cmd_read_all();
         break;
-    // TODO: Implement all other commands
+
+    case FRAME_CMD_SECURE_ERASE:
+        result = handle_cmd_secure_erase();
+        break;
+
+    case FRAME_CMD_PROGRAM_PAGE:
+        result = handle_cmd_program_page(payload, payload_size);
+        break;
+
+    // TOOD: Decide whether to even implement these
+    case FRAME_CMD_POWER_UP:
+    case FRAME_CMD_POWER_DOWN:
+    case FRAME_CMD_WRITE_ENABLE:
+        result = FRAME_ERROR_UNIMPLEMENTED;
+        break;
 
     default:
         LOG_WARN("Dropping unknown command: 0x%02X", frame_cmd);
