@@ -166,3 +166,16 @@ int spi_flash_read_page(uint16_t page_addr, uint8_t *dest_page) {
     spi_flash_end_cmd();
     return result;
 }
+
+int spi_flash_write_page(uint16_t page_addr, const uint8_t* src_page) {
+    if (!spi_flash_addr_valid(page_addr)) {
+        return PICO_ERROR_INVALID_ADDRESS;
+    }
+
+    spi_flash_begin_cmd(CMD_PAGEPROG);
+    spi_transfer24(page_addr);
+
+    int result = spi_write_blocking(SPI_PORT, src_page, SPI_FLASH_PAGE_SIZE);
+    spi_flash_end_cmd();
+    return result;
+}

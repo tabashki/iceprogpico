@@ -65,6 +65,7 @@ enum frame_error_codes {
     FRAME_ERROR_ESCAPE_SEQUENCE = -1001,
     FRAME_ERROR_BUFFER_2BIG = -1002,
     FRAME_ERROR_BUFFER_2SMALL = -1003,
+    FRAME_ERROR_VERIFY_FAILED = -1004,
 };
 
 #define MIN_FRAME_SIZE 2    // Excluding terminator
@@ -336,10 +337,41 @@ int handle_cmd_program_page(const uint8_t* payload, size_t payload_size) {
         return FRAME_ERROR_BUFFER_2SMALL;
     }
 
-    const uint16_t page_addr = ((uint16_t)payload[0]) << 16 | payload[1];
+    const uint16_t page_addr = ((uint16_t)payload[0]) << 8 | payload[1];
 
-    // TODO: Implement this
-    return FRAME_ERROR_UNIMPLEMENTED;
+    spi_flash_power_up();
+    int result = spi_flash_write_page(page_addr, payload + 2);
+    spi_flash_power_down();
+
+    if (result < PICO_OK) {
+        LOG_ERROR("Failed to write flash page 0x%X, result: %d",
+                  page_addr, result);
+        return result;
+    }
+
+    uint8_t read_back[SPI_FLASH_PAGE_SIZE];
+    spi_flash_power_up();
+    result = spi_flash_read_page(page_addr, read_back);
+    spi_flash_power_down();
+
+    if (result < PICO_OK) {
+        LOG_ERROR("Failed to read back page 0x%X, result: %d",
+                  page_addr, result);
+        return result;
+    }
+    for (size_t i = 0; i < sizeof(read_back); i++) {
+        const uint8_t src = payload[i+2];
+        const uint8_t dest = read_back[i];
+        if (src != dest) {
+            size_t byte_addr = page_addr * SPI_FLASH_PAGE_SIZE + i;
+            LOG_ERROR("Verify failed at 0x%X: expected 0x%02X, was 0x%02X",
+                      byte_addr, src, dest);
+            return FRAME_ERROR_VERIFY_FAILED;
+        }
+    }
+
+    result = encode_and_send_frame(FRAME_CMD_READY, NULL, 0);
+    return (result < FRAME_OK) ? result : FRAME_OK;
 }
 
 void prog_loop() {
@@ -383,7 +415,7 @@ void prog_loop() {
                 result = FRAME_ERROR_BUFFER_2SMALL;
                 break;
             }
-            const uint16_t page_addr = ((uint16_t)payload[0]) << 16 | payload[1];
+            const uint16_t page_addr = ((uint16_t)payload[0]) << 8 | payload[1];
             result = handle_cmd_read_page(page_addr);
         }
         break;

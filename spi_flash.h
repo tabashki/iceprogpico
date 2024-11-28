@@ -22,4 +22,7 @@ int spi_flash_read_size();
 // NOTE: Assumes `dest_page` buffer size is least `SPI_FLASH_PAGE_SIZE`
 int spi_flash_read_page(uint16_t page_addr, uint8_t* dest_page);
 
+// NOTE: Assumes `src_page` buffer size is least `SPI_FLASH_PAGE_SIZE`
+int spi_flash_write_page(uint16_t page_addr, const uint8_t* src_page);
+
 #endif // SPI_FLASH_H
