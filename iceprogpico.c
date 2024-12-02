@@ -39,7 +39,7 @@ enum iceprog_frame_consts {
     FRAME_CMD_POWER_DOWN = 0xB9,    // Seemingly unused
     FRAME_CMD_WRITE_ENABLE = 0x06,  // Seemingly unused
     FRAME_CMD_BULK_ERASE = 0xC7,
-    FRAME_CMD_SECURE_ERASE = 0xD8,
+    FRAME_CMD_SECTOR_ERASE = 0xD8,
     FRAME_CMD_PROGRAM_PAGE = 0x02,
     FRAME_CMD_READ_PAGE = 0x03,
     FRAME_CMD_READ_ALL = 0x83,
@@ -336,7 +336,7 @@ int handle_cmd_bulk_erase() {
 #endif // ENABLE_DESTRUCTIVE_CMDS
 }
 
-int handle_cmd_secure_erase() {
+int handle_cmd_sector_erase() {
 #if ENABLE_DESTRUCTIVE_CMDS
     // TODO: Implement this
     return FRAME_ERROR_UNIMPLEMENTED;
@@ -442,8 +442,8 @@ void prog_loop() {
         result = handle_cmd_read_all();
         break;
 
-    case FRAME_CMD_SECURE_ERASE:
-        result = handle_cmd_secure_erase();
+    case FRAME_CMD_SECTOR_ERASE:
+        result = handle_cmd_sector_erase();
         break;
 
     case FRAME_CMD_PROGRAM_PAGE:
