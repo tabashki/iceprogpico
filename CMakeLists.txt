@@ -40,6 +40,13 @@ target_include_directories(iceprogpico PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts or any other standard includes, if required
 )
 
+# Build options
+option(WITH_LOGGING "Enable logging support" ON)
+option(WITH_DESTRUCTIVE_COMMANDS "Enable destructive operations" ON)
+
+add_compile_definitions(WITH_LOGGING=$<BOOL:${WITH_LOGGING}>)
+add_compile_definitions(WITH_DESTRUCTIVE_COMMANDS=$<BOOL:${WITH_DESTRUCTIVE_COMMANDS}>)
+
 # Add any user requested libraries
 target_link_libraries(iceprogpico hardware_spi)
 

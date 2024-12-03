@@ -74,8 +74,8 @@ enum frame_error_codes {
 
 // !!! DANGER ZONE !!!
 // Used to enable/disable destructive (write/erase) operations for development
-#ifndef ENABLE_DESTRUCTIVE_CMDS
-#define ENABLE_DESTRUCTIVE_CMDS 1
+#ifndef WITH_DESTRUCTIVE_CMDS
+#define WITH_DESTRUCTIVE_CMDS 1
 #endif
 
 
@@ -328,12 +328,12 @@ int handle_cmd_read_all() {
 }
 
 int handle_cmd_bulk_erase() {
-#if ENABLE_DESTRUCTIVE_CMDS
+#if WITH_DESTRUCTIVE_CMDS
     // TODO: Implement this
     return FRAME_ERROR_UNIMPLEMENTED;
 #else
     return FRAME_OK;
-#endif // ENABLE_DESTRUCTIVE_CMDS
+#endif // WITH_DESTRUCTIVE_CMDS
 }
 
 int handle_cmd_sector_erase() {
@@ -342,11 +342,11 @@ int handle_cmd_sector_erase() {
     return FRAME_ERROR_UNIMPLEMENTED;
 #else
     return FRAME_OK;
-#endif // ENABLE_DESTRUCTIVE_CMDS
+#endif // WITH_DESTRUCTIVE_CMDS
 }
 
 int handle_cmd_program_page(const uint8_t* payload, size_t payload_size) {
-#if ENABLE_DESTRUCTIVE_CMDS
+#if WITH_DESTRUCTIVE_CMDS
     if (payload_size < (2 + SPI_FLASH_PAGE_SIZE)) {
         LOG_ERROR("PROGRAM_PAGE payload too small: %llu", payload_size);
         return FRAME_ERROR_BUFFER_2SMALL;
@@ -389,7 +389,7 @@ int handle_cmd_program_page(const uint8_t* payload, size_t payload_size) {
     return (result < FRAME_OK) ? result : FRAME_OK;
 #else
     return encode_and_send_frame(FRAME_CMD_READY, NULL, 0);;
-#endif // ENABLE_DESTRUCTIVE_CMDS
+#endif // WITH_DESTRUCTIVE_CMDS
 }
 
 void prog_loop() {
@@ -518,7 +518,7 @@ int main() {
     bi_decl(bi_program_description("Iceprogduino port for the Raspberry Pi Pico"));
     bi_decl(bi_program_url("https://github.com/tabashki/iceprogpico"));
     BI_DECL_BUILD_MACRO_STATE(WITH_LOGGING);
-    BI_DECL_BUILD_MACRO_STATE(ENABLE_DESTRUCTIVE_CMDS);
+    BI_DECL_BUILD_MACRO_STATE(WITH_DESTRUCTIVE_CMDS);
 
     bi_decl(bi_1pin_with_name(PIN_RESET, "RESET"));
     bi_decl(bi_1pin_with_name(PIN_CDONE, "CDONE"));
