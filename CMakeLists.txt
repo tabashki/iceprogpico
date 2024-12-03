@@ -42,10 +42,10 @@ target_include_directories(iceprogpico PRIVATE
 
 # Build options
 option(WITH_LOGGING "Enable logging support" ON)
-option(WITH_DESTRUCTIVE_COMMANDS "Enable destructive operations" ON)
+option(WITH_DESTRUCTIVE_CMDS "Enable destructive operations" ON)
 
 add_compile_definitions(WITH_LOGGING=$<BOOL:${WITH_LOGGING}>)
-add_compile_definitions(WITH_DESTRUCTIVE_COMMANDS=$<BOOL:${WITH_DESTRUCTIVE_COMMANDS}>)
+add_compile_definitions(WITH_DESTRUCTIVE_CMDS=$<BOOL:${WITH_DESTRUCTIVE_CMDS}>)
 
 # Add any user requested libraries
 target_link_libraries(iceprogpico hardware_spi)
