@@ -274,7 +274,7 @@ int handle_cmd_read_id() {
     return result;
 }
 
-int handle_cmd_read_page(const uint16_t page_addr) {
+int read_and_send_page(uint16_t page_addr) {
     uint8_t response[SPI_FLASH_PAGE_SIZE + 2];
     response[0] = (uint8_t)(page_addr >> 8);
     response[1] = (uint8_t)page_addr;
@@ -306,6 +306,16 @@ int handle_cmd_read_page(const uint16_t page_addr) {
         LOG_COND_ERROR(result < FRAME_OK,
                        "Failed to send READ_PAGE response: %d", result);
     }
+    return result;
+}
+
+int handle_cmd_read_page(const uint8_t* payload, size_t payload_size) {
+    if (payload_size < 2) {
+        LOG_ERROR("READ_PAGE payload too small: %llu", payload_size);
+        return FRAME_ERROR_BUFFER_2SMALL;
+    }
+    const uint16_t page_addr = ((uint16_t)payload[0]) << 8 | payload[1];
+    int result = read_and_send_page(page_addr);
     return (result < FRAME_OK) ? result : FRAME_OK;
 }
 
@@ -319,7 +329,7 @@ int handle_cmd_read_all() {
 
     int result = FRAME_OK;
     for (uint32_t page_addr = 0; page_addr < pages; page_addr++) {
-        result = handle_cmd_read_page(page_addr);
+        result = read_and_send_page(page_addr);
         if (result < FRAME_OK) {
             return result;
         }
@@ -332,15 +342,22 @@ int handle_cmd_bulk_erase() {
     // TODO: Implement this
     return FRAME_ERROR_UNIMPLEMENTED;
 #else
+    LOG_INFO("Disabled command - BULK_ERASE");
     return FRAME_OK;
 #endif // WITH_DESTRUCTIVE_CMDS
 }
 
-int handle_cmd_sector_erase() {
-#if ENABLE_DESTRUCTIVE_CMDS
-    // TODO: Implement this
-    return FRAME_ERROR_UNIMPLEMENTED;
+int handle_cmd_sector_erase(const uint8_t* payload, size_t payload_size) {
+    if (payload_size < 2) {
+        LOG_ERROR("READ_PAGE payload too small: %llu", payload_size);
+        return FRAME_ERROR_BUFFER_2SMALL;
+    }
+    const uint16_t page_addr = ((uint16_t)payload[0]) << 8 | payload[1];
+
+#if WITH_DESTRUCTIVE_CMDS
+    return spi_flash_erase_block_64k(page_addr);
 #else
+    LOG_INFO("Disabled command - SECTOR_ERASE for: %u", page_addr);
     return FRAME_OK;
 #endif // WITH_DESTRUCTIVE_CMDS
 }
@@ -427,23 +444,20 @@ void prog_loop() {
         result = handle_cmd_read_id();
         break;
 
-    case FRAME_CMD_READ_PAGE: {
-            if (payload_size < 2) {
-                LOG_ERROR("READ_PAGE payload too small: %d", result);
-                result = FRAME_ERROR_BUFFER_2SMALL;
-                break;
-            }
-            const uint16_t page_addr = ((uint16_t)payload[0]) << 8 | payload[1];
-            result = handle_cmd_read_page(page_addr);
-        }
+    case FRAME_CMD_READ_PAGE:
+        result = handle_cmd_read_page(payload, payload_size);
         break;
 
     case FRAME_CMD_READ_ALL:
         result = handle_cmd_read_all();
         break;
 
+    case FRAME_CMD_BULK_ERASE:
+        result = handle_cmd_bulk_erase();
+        break;
+
     case FRAME_CMD_SECTOR_ERASE:
-        result = handle_cmd_sector_erase();
+        result = handle_cmd_sector_erase(payload, payload_size);
         break;
 
     case FRAME_CMD_PROGRAM_PAGE:

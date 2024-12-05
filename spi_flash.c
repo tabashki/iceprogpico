@@ -81,7 +81,7 @@ static bool spi_flash_busy() {
     return (spi_flash_read_stat1() & STATUS_BUSY) != 0;
 }
 
-static bool spi_flash_addr_valid(uint16_t page_addr) {
+static bool spi_flash_page_addr_valid(uint16_t page_addr) {
     if (cached_flash_size == 0) {
         int result = spi_flash_read_size();
         if (result < PICO_OK) {
@@ -90,6 +90,14 @@ static bool spi_flash_addr_valid(uint16_t page_addr) {
         cached_flash_size = (uint32_t)result;
     }
     return (page_addr < (cached_flash_size / SPI_FLASH_PAGE_SIZE));
+}
+
+static bool spi_flash_write_enable() {
+    spi_flash_begin_cmd(CMD_WRITEENABLE);
+    spi_flash_end_cmd();
+
+    uint8_t status = spi_flash_read_stat1();
+    return (status & STATUS_WRTEN) != 0;
 }
 
 // Public Functions
@@ -154,7 +162,7 @@ int spi_flash_read_size() {
 }
 
 int spi_flash_read_page(uint16_t page_addr, uint8_t *dest_page) {
-    if (!spi_flash_addr_valid(page_addr)) {
+    if (!spi_flash_page_addr_valid(page_addr)) {
         return PICO_ERROR_INVALID_ADDRESS;
     }
 
@@ -168,8 +176,11 @@ int spi_flash_read_page(uint16_t page_addr, uint8_t *dest_page) {
 }
 
 int spi_flash_write_page(uint16_t page_addr, const uint8_t* src_page) {
-    if (!spi_flash_addr_valid(page_addr)) {
+    if (!spi_flash_page_addr_valid(page_addr)) {
         return PICO_ERROR_INVALID_ADDRESS;
+    }
+    if (!spi_flash_write_enable()) {
+        return PICO_ERROR_NOT_PERMITTED;
     }
 
     spi_flash_begin_cmd(CMD_PAGEPROG);
@@ -178,4 +189,53 @@ int spi_flash_write_page(uint16_t page_addr, const uint8_t* src_page) {
     int result = spi_write_blocking(SPI_PORT, src_page, SPI_FLASH_PAGE_SIZE);
     spi_flash_end_cmd();
     return result;
+}
+
+int spi_flash_erase_block_64k(uint16_t page_addr) {
+    if (!spi_flash_page_addr_valid(page_addr)) {
+        return PICO_ERROR_INVALID_ADDRESS;
+    }
+    if (spi_flash_busy()) {
+        return PICO_ERROR_RESOURCE_IN_USE;
+    }
+    if (!spi_flash_write_enable()) {
+        return PICO_ERROR_NOT_PERMITTED;
+    }
+
+    spi_flash_begin_cmd(CMD_BLOCK64ERASE);
+    spi_transfer24(page_addr << 8);
+    spi_flash_end_cmd();
+
+    // Typical Block 64K erase time is about 200ms, however it can vary up to
+    // 2000ms for Winbond devices, and up to 3000ms for Zetta devices. To handle
+    // the edge cases we use an exponential backoff in 200ms steps here
+    for (int wait = 1; wait < 6; wait++) {
+        const uint32_t timeout_ms = 200 * wait;
+        if (spi_flash_wait_idle(timeout_ms)) {
+            return PICO_OK;
+        }
+    }
+    return PICO_ERROR_TIMEOUT;
+}
+
+int spi_flash_chip_erase() {
+    if (spi_flash_busy()) {
+        return PICO_ERROR_RESOURCE_IN_USE;
+    }
+    if (!spi_flash_write_enable()) {
+        return PICO_ERROR_NOT_PERMITTED;
+    }
+
+    spi_flash_begin_cmd(CMD_CHIPERASE);
+    spi_flash_end_cmd();
+
+    // Typical Chip Erase time is 5000ms for Winbond devices, 7000ms for Zetta,
+    // and potentially up to 20 seconds. Exponential backoff in -1s steps
+    for (int wait = 0; wait < 6; wait++) {
+        const uint32_t timeout_ms = 6000 - 1000 * wait;
+        if (spi_flash_wait_idle(timeout_ms)) {
+            return PICO_OK;
+        }
+    }
+    return PICO_ERROR_TIMEOUT;
 }
