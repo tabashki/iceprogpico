@@ -15,5 +15,5 @@ jobs:
           if-no-files-found: error
           compression-level: 9
           path: |
-            LICENSE.md
+            LICENSE
             build/iceprogpico.uf2
