@@ -311,7 +311,7 @@ int read_and_send_page(uint16_t page_addr) {
 
 int handle_cmd_read_page(const uint8_t* payload, size_t payload_size) {
     if (payload_size < 2) {
-        LOG_ERROR("READ_PAGE payload too small: %llu", payload_size);
+        LOG_ERROR("READ_PAGE payload too small: %lu", payload_size);
         return FRAME_ERROR_BUFFER_2SMALL;
     }
     const uint16_t page_addr = ((uint16_t)payload[0]) << 8 | payload[1];
@@ -349,7 +349,7 @@ int handle_cmd_bulk_erase() {
 
 int handle_cmd_sector_erase(const uint8_t* payload, size_t payload_size) {
     if (payload_size < 2) {
-        LOG_ERROR("READ_PAGE payload too small: %llu", payload_size);
+        LOG_ERROR("READ_PAGE payload too small: %lu", payload_size);
         return FRAME_ERROR_BUFFER_2SMALL;
     }
     const uint16_t page_addr = ((uint16_t)payload[0]) << 8 | payload[1];
@@ -365,7 +365,7 @@ int handle_cmd_sector_erase(const uint8_t* payload, size_t payload_size) {
 int handle_cmd_program_page(const uint8_t* payload, size_t payload_size) {
 #if WITH_DESTRUCTIVE_CMDS
     if (payload_size < (2 + SPI_FLASH_PAGE_SIZE)) {
-        LOG_ERROR("PROGRAM_PAGE payload too small: %llu", payload_size);
+        LOG_ERROR("PROGRAM_PAGE payload too small: %lu", payload_size);
         return FRAME_ERROR_BUFFER_2SMALL;
     }
 
@@ -421,7 +421,6 @@ void prog_loop() {
                        "Failed to recieve/decode frame: %d", result);
         return;
     }
-    LOG_INFO("Recieved frame, len: %d, data[0]: 0x%02X", result, frame_data[0]);
 
     // Turn on status LED during frame handlig
     gpio_put(PIN_LED, 1);
@@ -431,6 +430,9 @@ void prog_loop() {
     const uint8_t frame_cmd = frame_data[0];
     const uint8_t* payload = (frame_data + 1);
     const size_t payload_size = (size_t)result - 1;
+
+    LOG_INFO("Recieved frame, cmd: 0x%02X, payload_size: %lu",
+             frame_cmd, payload_size);
 
     switch(frame_cmd) {
 #if WITH_LOGGING
