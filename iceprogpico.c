@@ -288,14 +288,15 @@ int read_and_send_page(uint16_t page_addr) {
                   page_addr, result);
         return result;
     }
-    bool page_is_zeroed = true;
+    bool page_is_erased = true;
     for (uint16_t i = 0; i < SPI_FLASH_PAGE_SIZE; i++) {
-        if (response[i + 2] != 0) {
-            page_is_zeroed = false;
+        // Erased flash pages contain all ones
+        if (response[i + 2] != 0xFF) {
+            page_is_erased = false;
             break;
         }
     }
-    if (page_is_zeroed) {
+    if (page_is_erased) {
         result = encode_and_send_frame(FRAME_CMD_EMPTY,
                                        response, 2);
         LOG_COND_ERROR(result < FRAME_OK,
@@ -321,7 +322,7 @@ int handle_cmd_read_page(const uint8_t* payload, size_t payload_size) {
 
 int handle_cmd_read_all() {
     // The original iceprogduino firmware AND the PC-side command line tool
-    // both have this hardcoded max page count, so we must respec it.
+    // both have this hardcoded max page count, so we must respect it.
     const uint32_t max_pages = 0x2000;
 
     uint32_t pages = spi_flash_read_size() / SPI_FLASH_PAGE_SIZE;
@@ -334,7 +335,8 @@ int handle_cmd_read_all() {
             return result;
         }
     }
-    return FRAME_OK;
+    // Report back that reading has completed
+    return encode_and_send_frame(FRAME_CMD_READY, NULL, 0);
 }
 
 int handle_cmd_bulk_erase() {
