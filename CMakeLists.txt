@@ -20,12 +20,11 @@ project(iceprogpico C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# Add executable. Default name is the project name, version 0.1
-
+# Add executable
 add_executable(iceprogpico iceprogpico.c spi_flash.c log.c)
 
 pico_set_program_name(iceprogpico "iceprogpico")
-pico_set_program_version(iceprogpico "0.1")
+pico_set_program_version(iceprogpico "0.1.1")
 
 # Only use USB for serial communication
 pico_enable_stdio_usb(iceprogpico 1)
