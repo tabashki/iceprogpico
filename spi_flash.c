@@ -167,7 +167,7 @@ int spi_flash_read_page(uint16_t page_addr, uint8_t *dest_page) {
     }
 
     spi_flash_begin_cmd(CMD_READDATA);
-    spi_transfer24(page_addr);
+    spi_transfer24(page_addr << 8);
 
     int result = spi_read_blocking(SPI_PORT, 0,
                                    dest_page, SPI_FLASH_PAGE_SIZE);
@@ -184,7 +184,7 @@ int spi_flash_write_page(uint16_t page_addr, const uint8_t* src_page) {
     }
 
     spi_flash_begin_cmd(CMD_PAGEPROG);
-    spi_transfer24(page_addr);
+    spi_transfer24(page_addr << 8);
 
     int result = spi_write_blocking(SPI_PORT, src_page, SPI_FLASH_PAGE_SIZE);
     spi_flash_end_cmd();
