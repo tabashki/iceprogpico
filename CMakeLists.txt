@@ -51,6 +51,6 @@ add_compile_definitions(WITH_DESTRUCTIVE_CMDS=$<BOOL:${WITH_DESTRUCTIVE_CMDS}>)
 target_link_libraries(iceprogpico hardware_spi)
 
 # Doesn't make sense to run this program from flash
-pico_set_binary_type(iceprogpico no_flash)
+pico_set_binary_type(iceprogpico copy_to_ram)
 
 pico_add_extra_outputs(iceprogpico)
