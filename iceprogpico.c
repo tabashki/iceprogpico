@@ -325,16 +325,29 @@ int handle_cmd_read_all() {
     // both have this hardcoded max page count, so we must respect it.
     const uint32_t max_pages = 0x2000;
 
-    uint32_t pages = spi_flash_read_size() / SPI_FLASH_PAGE_SIZE;
+    spi_flash_power_up();
+    int result = spi_flash_read_size();
+    if (result < FRAME_OK) {
+        LOG_ERROR("Failed to read flash size: %d", result);
+        return result;
+    }
+    LOG_INFO("Detected flash with size: %lu KiB", result >> 10);
+    uint32_t pages = result / SPI_FLASH_PAGE_SIZE;
     pages = MIN(pages, max_pages);
 
-    int result = FRAME_OK;
+    LOG_INFO("Preparing to send %lu flash pages", pages);
+    result = FRAME_OK;
     for (uint32_t page_addr = 0; page_addr < pages; page_addr++) {
         result = read_and_send_page(page_addr);
         if (result < FRAME_OK) {
+            LOG_ERROR("Failed to send page with addr: %lu, result: %d",
+                      page_addr, result);
             return result;
         }
     }
+    spi_flash_power_down();
+    LOG_INFO("Read and sent %lu flash pages", pages);
+
     // Report back that reading has completed
     return encode_and_send_frame(FRAME_CMD_READY, NULL, 0);
 }
