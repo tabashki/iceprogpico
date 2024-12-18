@@ -178,12 +178,22 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
     dest[n++] = FRAME_END;
     dest[n++] = frame_cmd;
 
-    size_t i = 0;
-    while (i < payload_size && n < dest_size) {
-        uint8_t p = payload[i++];
-        frame_checksum += p;
-
-        bool needs_escape = (p == FRAME_END || p == FRAME_ESC);
+    for (size_t i = 0; i <= payload_size; i++) {
+        if (n >= dest_size) {
+            LOG_ERROR("Frame encoding overflowed dest buffer");
+            return FRAME_ERROR_BUFFER_2SMALL;
+        }
+        uint8_t p = 0;
+        const bool end_of_payload = (i == payload_size);
+        if (end_of_payload) {
+            // Re-use all the following escape sequence logic to write the
+            // frame end checksum, which might end up being equal to FRAME_ESC
+            p = (0xFF - frame_checksum);
+        } else {
+            p = payload[i];
+            frame_checksum += p;
+        }
+        const bool needs_escape = (p == FRAME_END || p == FRAME_ESC);
         if (needs_escape) {
             if ((n+1) >= dest_size) {
                 LOG_ERROR("ESC sequence overflow, dest_size: %lu", dest_size);
@@ -208,11 +218,10 @@ int encode_frame(uint8_t frame_cmd, const uint8_t* payload, size_t payload_size,
             dest[n++] = p;
         }
     }
-    if ((n + 2) >= dest_size) {
+    if ((n + 1) >= dest_size) {
         LOG_ERROR("Dest too small to write FRAME_END, size: %lu", dest_size);
         return FRAME_ERROR_BUFFER_2SMALL;
     }
-    dest[n++] = (0xFF - frame_checksum);
     dest[n++] = FRAME_END;
 
     return (int)n;
