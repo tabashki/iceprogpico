@@ -364,7 +364,7 @@ int handle_cmd_read_all() {
 int handle_cmd_bulk_erase() {
 #if WITH_DESTRUCTIVE_CMDS
     int result = spi_flash_chip_erase();
-    if result < FRAME_OK {
+    if (result < FRAME_OK) {
         return result;
     }
     return encode_and_send_frame(FRAME_CMD_READY, NULL, 0);
@@ -383,7 +383,7 @@ int handle_cmd_sector_erase(const uint8_t* payload, size_t payload_size) {
 
 #if WITH_DESTRUCTIVE_CMDS
     int result = spi_flash_erase_block_64k(page_addr);
-    if result < FRAME_OK {
+    if (result < FRAME_OK) {
         return result;
     }
     return encode_and_send_frame(FRAME_CMD_READY, NULL, 0);
