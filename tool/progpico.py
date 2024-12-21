@@ -17,6 +17,7 @@ BAUD_RATE = 115200
 PAGE_SIZE = 256
 SECTOR_SIZE = 0x10000 # 64KiB
 PAGES_IN_SECTOR = SECTOR_SIZE // PAGE_SIZE
+PROGPICO_VERSION = (0, 1, 1)
 
 # Constants for protocol commands and characters
 class Command(IntEnum):
@@ -404,8 +405,14 @@ def main():
     ops.add_argument('-e', action='store_true', dest='erase_mode', help='Bulk erase only and then exit')
     ops.add_argument('-c', action='store_true', dest='check_mode', help='Compare file with flash content')
     ops.add_argument('-L', action='store_true', dest='dump_log', help='DEBUG: Dump internal log (for iceprogpico only)')
+    ops.add_argument('-V', action='store_true', dest='version', help='Display version string')
 
     args, unparsed = p.parse_known_args()
+
+    if args.version:
+        print('progpico version:', '.'.join(str(x) for x in PROGPICO_VERSION))
+        p.print_usage()
+        sys.exit(0)
 
     invalid_args = False
     verbose = args.verbose
@@ -441,7 +448,7 @@ def main():
     if invalid_args:
         print()
         p.print_help()
-        exit(1)
+        sys.exit(1)
 
     ser = serial.Serial(serial_port, baudrate=BAUD_RATE, timeout=1)
 
