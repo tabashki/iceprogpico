@@ -468,7 +468,7 @@ def main():
     elif write_mode:
         if verbose:
             print(f'Opening file {filename} to write flash contents from')
-        with open(filename, 'wb') as f:
+        with open(filename, 'rb') as f:
             flash_write_from_file(ser, f, args.rw_offset, args.dont_erase, args.bulk_erase, verbose)
     elif args.dump_log:
         if verbose:
