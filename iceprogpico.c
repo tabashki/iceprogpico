@@ -363,10 +363,12 @@ int handle_cmd_read_all() {
 
 int handle_cmd_bulk_erase() {
 #if WITH_DESTRUCTIVE_CMDS
+    spi_flash_power_up();
     int result = spi_flash_chip_erase();
     if (result < FRAME_OK) {
         return result;
     }
+    spi_flash_power_down();
     return encode_and_send_frame(FRAME_CMD_READY, NULL, 0);
 #else
     LOG_INFO("Disabled command - BULK_ERASE");
@@ -382,10 +384,12 @@ int handle_cmd_sector_erase(const uint8_t* payload, size_t payload_size) {
     const uint16_t page_addr = ((uint16_t)payload[0]) << 8 | payload[1];
 
 #if WITH_DESTRUCTIVE_CMDS
+    spi_flash_power_up();
     int result = spi_flash_erase_block_64k(page_addr);
     if (result < FRAME_OK) {
         return result;
     }
+    spi_flash_power_down();
     return encode_and_send_frame(FRAME_CMD_READY, NULL, 0);
 #else
     LOG_INFO("Disabled command - SECTOR_ERASE for: %u", page_addr);
