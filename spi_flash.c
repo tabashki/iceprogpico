@@ -64,19 +64,6 @@ static uint8_t spi_flash_read_stat1() {
     return stat1;
 }
 
-static bool spi_flash_wait_idle(uint32_t timeout_ms) {
-    absolute_time_t end_time = make_timeout_time_ms(timeout_ms);
-    uint8_t stat1 = 0;
-    do {
-        stat1 = spi_flash_read_stat1();
-        if (time_reached(end_time)) {
-            return false;
-        }
-    }
-    while ((stat1 & STATUS_BUSY) != 0);
-    return true;
-}
-
 static bool spi_flash_busy() {
     return (spi_flash_read_stat1() & STATUS_BUSY) != 0;
 }
@@ -102,6 +89,19 @@ static bool spi_flash_write_enable() {
 
 // Public Functions
 //------------------
+
+bool spi_flash_wait_idle(uint32_t timeout_ms) {
+    absolute_time_t end_time = make_timeout_time_ms(timeout_ms);
+    uint8_t stat1 = 0;
+    do {
+        stat1 = spi_flash_read_stat1();
+        if (time_reached(end_time)) {
+            return false;
+        }
+    }
+    while ((stat1 & STATUS_BUSY) != 0);
+    return true;
+}
 
 bool spi_flash_power_up() {
     spi_flash_begin_cmd(CMD_RELEASE);

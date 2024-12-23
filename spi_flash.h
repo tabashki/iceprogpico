@@ -10,6 +10,8 @@
 
 #define SPI_FLASH_PAGE_SIZE 0x100
 
+bool spi_flash_wait_idle(uint32_t timeout_ms);
+
 bool spi_flash_power_up();
 
 bool spi_flash_power_down();
