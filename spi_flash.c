@@ -74,7 +74,6 @@ static bool spi_flash_page_addr_valid(uint16_t page_addr) {
         if (result < PICO_OK) {
             return false; // Something really bad happened if we get here
         }
-        cached_flash_size = (uint32_t)result;
     }
     return (page_addr < (cached_flash_size / SPI_FLASH_PAGE_SIZE));
 }
@@ -158,10 +157,10 @@ int spi_flash_read_size() {
         return PICO_ERROR_BUFFER_TOO_SMALL;
     }
     uint32_t shift = id[2];
-    if (shift < 1) {
+    if (shift < 1 || shift > 31) {
         return PICO_ERROR_INVALID_DATA;
     }
-    cached_flash_size = (1lu << shift);
+    cached_flash_size = (1u << shift);
     return (int)cached_flash_size;
 }
 
