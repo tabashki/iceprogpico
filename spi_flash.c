@@ -157,8 +157,12 @@ int spi_flash_read_size() {
     if (result < 3) {
         return PICO_ERROR_BUFFER_TOO_SMALL;
     }
-    cached_flash_size = (1 << id[2]);
-    return cached_flash_size;
+    uint32_t shift = id[2];
+    if (shift < 1) {
+        return PICO_ERROR_INVALID_DATA;
+    }
+    cached_flash_size = (1lu << shift);
+    return (int)cached_flash_size;
 }
 
 int spi_flash_read_page(uint16_t page_addr, uint8_t *dest_page) {
