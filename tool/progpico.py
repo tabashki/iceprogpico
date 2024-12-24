@@ -44,6 +44,21 @@ FRAME_ESCAPED_ESC = 0xDD
 # Frame Handling
 #
 
+def encode_escaped_byte(b):
+    """
+    Encodes a byte to escape if it's a frame end or escape character.
+
+    :param b: The byte to encode.
+    :return: The encoded byte array.
+    """
+    if b == FRAME_END:
+        return bytearray([FRAME_ESC, FRAME_ESCAPED_END])
+    elif b == FRAME_ESC:
+        return bytearray([FRAME_ESC, FRAME_ESCAPED_ESC])
+    else:
+        return bytearray([b])
+
+
 def encode_frame(cmd, payload=None):
     """
     Encodes a frame for transmission over the serial connection.
@@ -57,13 +72,9 @@ def encode_frame(cmd, payload=None):
     if payload is not None:
         for b in payload:
             checksum = (checksum + b) & 0xFF
-            if b == FRAME_END:
-                frame.extend([FRAME_ESC, FRAME_ESCAPED_END])
-            elif b == FRAME_ESC:
-                frame.extend([FRAME_ESC, FRAME_ESCAPED_ESC])
-            else:
-                frame.append(b)
-    frame.extend([0xFF - checksum, FRAME_END])
+            frame.extend(encode_escaped_byte(b))
+    frame.extend(encode_escaped_byte(0xFF - checksum))
+    frame.append(FRAME_END)
     return frame
 
 
