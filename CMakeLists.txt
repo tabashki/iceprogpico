@@ -24,7 +24,7 @@ pico_sdk_init()
 add_executable(iceprogpico iceprogpico.c spi_flash.c log.c)
 
 pico_set_program_name(iceprogpico "iceprogpico")
-pico_set_program_version(iceprogpico "0.1.1")
+pico_set_program_version(iceprogpico "0.1.2")
 
 # Only use USB for serial communication
 pico_enable_stdio_usb(iceprogpico 1)

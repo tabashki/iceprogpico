@@ -18,7 +18,7 @@ BAUD_RATE = 115200
 PAGE_SIZE = 256
 SECTOR_SIZE = 0x10000 # 64KiB
 PAGES_IN_SECTOR = SECTOR_SIZE // PAGE_SIZE
-PROGPICO_VERSION = (0, 1, 1)
+PROGPICO_VERSION = (0, 1, 2)
 
 # Constants for protocol commands and characters
 class Command(IntEnum):
