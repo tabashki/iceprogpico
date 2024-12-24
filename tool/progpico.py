@@ -11,6 +11,7 @@ from os import path
 from enum import IntEnum
 from argparse import ArgumentParser
 from struct import pack, unpack
+from time import sleep
 
 # Global constants
 BAUD_RATE = 115200
@@ -246,7 +247,7 @@ def flash_read_all(ser, file, verbose=False):
     if id != page_id:
         raise RuntimeError(f'Recieved out of order page, was id: {id}, expected: {page_id}')
     if len(page) != PAGE_SIZE:
-            raise RuntimeError(f'Recieved page with unexpected size: {len(page)}')
+        raise RuntimeError(f'Recieved page with unexpected size: {len(page)}')
 
     while True:
         file.write(page)
@@ -258,8 +259,11 @@ def flash_read_all(ser, file, verbose=False):
             raise RuntimeError(f'Recieved page with unexpected size: {len(page)}')
         if id != page_id:
             raise RuntimeError(f'Recieved out of order page, was id: {id}, expected: {page_id}')
-    if verbose:
-        print(f'Wrote {page_id} pages to file ({file.tell()} bytes)')
+        if not verbose:
+            print(f'Read page: {page_id}', end='\r')
+    if not verbose:
+        print()
+    print(f'Wrote {page_id} pages to file ({file.tell()} bytes)')
 
 
 def flash_bulk_erase(ser, verbose=False):
@@ -270,6 +274,7 @@ def flash_bulk_erase(ser, verbose=False):
     :param verbose: If True, print out progress information.
     """
     send_frame(ser, Command.BULK_ERASE)
+    sleep(6)  # Very slow operation, must wait before reading back state
     r = expect_frame(ser, Command.READY)
     if r is None:
         raise RuntimeError('Failed to recieve response to BULK_ERASE')
@@ -285,7 +290,7 @@ def flash_64k_sector_erase(ser, page_id, verbose=False):
     :param page_id: The page ID of the first page in the sector to be erased.
     :param verbose: If True, print out progress information.
     """
-    payload = bytearray([ (page_id >> 16) & 0xFF, (page_id >> 8) & 0xFF ])
+    payload = bytearray([ (page_id >> 8) & 0xFF, page_id & 0xFF ])
     if verbose:
         print(f'Sending sector erase command for page: {page_id}')
     send_frame(ser, Command.SECTOR_ERASE, payload)
@@ -311,9 +316,9 @@ def flash_program_page(ser, page_id, data, verbose=False):
         if verbose:
             print(f'Padding data from size: {len(data)} up to PAGE_SIZE: {PAGE_SIZE}')
         # Pad the data up to PAGE_SIZE
-        data = data + [0xFF] * (PAGE_SIZE - len(data))
+        data = data + bytearray([0xFF] * (PAGE_SIZE - len(data)))
 
-    payload = bytearray([ (page_id >> 16) & 0xFF, (page_id >> 8) & 0xFF ])
+    payload = bytearray([ (page_id >> 8) & 0xFF, page_id & 0xFF ])
     payload = payload + data
     if verbose:
         print(f'Programming page: {page_id}')
