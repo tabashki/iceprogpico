@@ -405,19 +405,27 @@ int handle_cmd_program_page(const uint8_t* payload, size_t payload_size) {
     }
 
     const uint16_t page_addr = ((uint16_t)payload[0]) << 8 | payload[1];
+    const uint8_t* page_data = (payload + 2);
+    const uint32_t timeout = 100;
 
     spi_flash_power_up();
-    int result = spi_flash_write_page(page_addr, payload + 2);
-    spi_flash_power_down();
+    if (!spi_flash_wait_idle(timeout)) {
+        LOG_ERROR("Timeout reached waiting for flash idle");
+        return PICO_ERROR_TIMEOUT;
+    }
 
+    int result = spi_flash_write_page(page_addr, page_data);
     if (result < PICO_OK) {
         LOG_ERROR("Failed to write flash page 0x%X, result: %d",
                   page_addr, result);
         return result;
     }
+    if (!spi_flash_wait_idle(timeout)) {
+        LOG_ERROR("Timeout reached waiting for flash idle");
+        return PICO_ERROR_TIMEOUT;
+    }
 
     uint8_t read_back[SPI_FLASH_PAGE_SIZE];
-    spi_flash_power_up();
     result = spi_flash_read_page(page_addr, read_back);
     spi_flash_power_down();
 
@@ -426,12 +434,13 @@ int handle_cmd_program_page(const uint8_t* payload, size_t payload_size) {
                   page_addr, result);
         return result;
     }
+
     for (size_t i = 0; i < sizeof(read_back); i++) {
-        const uint8_t src = payload[i+2];
+        const uint8_t src = page_data[i];
         const uint8_t dest = read_back[i];
         if (src != dest) {
-            size_t byte_addr = page_addr * SPI_FLASH_PAGE_SIZE + i;
-            LOG_ERROR("Verify failed at 0x%X: expected 0x%02X, was 0x%02X",
+            size_t byte_addr = (size_t)page_addr * SPI_FLASH_PAGE_SIZE + i;
+            LOG_ERROR("Verify failed at: 0x%06lX: expected 0x%02X, was 0x%02X",
                       byte_addr, src, dest);
             return FRAME_ERROR_VERIFY_FAILED;
         }
